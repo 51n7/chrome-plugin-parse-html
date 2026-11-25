@@ -1,26 +1,23 @@
+chrome.action.onClicked.addListener(async (tab) => {
+  if (!tab.id) {
+    return;
+  }
 
-// A function to use as callback
-function getDomAndCreateTab(domContent) {
-  
-  // create a new tab with an html page that resides in extension domain:
-  chrome.tabs.create({
-    'url': chrome.extension.getURL("index.html"), 
-    'active': true
-  },
-  function(tab){
-    var selfTabId = tab.id;
-    chrome.tabs.onUpdated.addListener(function(tabId, changeInfo, tab) {
-      if (changeInfo.status == "complete" && tabId == selfTabId){
-        // send the data to the page's script:
-        var tabs = chrome.extension.getViews({type: "tab"});
-        tabs[0].doSomething(domContent);
-      }
+  try {
+    const domContent = await chrome.tabs.sendMessage(tab.id, {
+      text: "report_back",
     });
-  });
-}
 
-chrome.browserAction.onClicked.addListener(function(tab) {
-  
-  chrome.tabs.sendMessage(tab.id, {text: 'report_back'}, getDomAndCreateTab);
+    await chrome.storage.session.set({ domContent });
 
+    await chrome.tabs.create({
+      url: chrome.runtime.getURL("index.html"),
+      active: true,
+    });
+  } catch (error) {
+    console.error(
+      "Could not read this page. Try a normal http(s) page where the content script can run.",
+      error
+    );
+  }
 });
